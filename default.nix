@@ -89,8 +89,9 @@ let
     '';
 
     installPhase = ''
-      mkdir -p $out/lib/modules/${kernel.modDirVersion}/kernel/drivers/leds
-      cp led-ugreen.ko $out/lib/modules/${kernel.modDirVersion}/kernel/drivers/leds/
+      # Install in extra directory for boot.extraModulePackages
+      mkdir -p $out/lib/modules/${kernel.modDirVersion}/extra
+      cp led-ugreen.ko $out/lib/modules/${kernel.modDirVersion}/extra/
     '';
 
     meta = {
