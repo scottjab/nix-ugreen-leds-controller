@@ -74,7 +74,8 @@ function set_netdev_normal_color() {
             100)   color=${COLOR_NETDEV_LINK_100:=$COLOR_NETDEV_NORMAL};;
             1000)  color=${COLOR_NETDEV_LINK_1000:=$COLOR_NETDEV_NORMAL};;
             2500)  color=${COLOR_NETDEV_LINK_2500:=$COLOR_NETDEV_NORMAL};;
-            5000|10000) color=${COLOR_NETDEV_LINK_10000:=$COLOR_NETDEV_NORMAL};;
+            5000)  color=${COLOR_NETDEV_LINK_5000:=${COLOR_NETDEV_LINK_10000:=$COLOR_NETDEV_NORMAL}};;
+            10000) color=${COLOR_NETDEV_LINK_5000:=${COLOR_NETDEV_LINK_10000:=$COLOR_NETDEV_NORMAL}};;
         esac
     fi
 
