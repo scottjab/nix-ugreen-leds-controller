@@ -11,7 +11,7 @@ with lib;
 let
   # Use the system's kernel packages, not the default pkgs kernel
   kernelPackages = config.boot.kernelPackages;
-  
+
   # Always build the package with the system's kernel to ensure kernel module matches
   # Even if package is in pkgs, we rebuild it to ensure kernel module compatibility
   defaultPackage = pkgs.callPackage (import packagePath) {
