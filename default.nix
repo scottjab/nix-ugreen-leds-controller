@@ -5,6 +5,7 @@
   gcc,
   kernel,
   kmod,
+  i2c-tools,
 }:
 
 let
@@ -108,17 +109,18 @@ let
 
     sourceRoot = "source/scripts";
 
-    nativeBuildInputs = [ kmod ];
+    nativeBuildInputs = [ kmod i2c-tools ];
 
     installPhase = ''
       mkdir -p $out/bin
       cp ugreen-diskiomon ugreen-netdevmon ugreen-probe-leds $out/bin/
 
-      # Patch scripts to use absolute paths to kmod utilities
+      # Patch scripts to use absolute paths to kmod and i2c-tools utilities
       # Use sed to replace commands with word boundaries to avoid false matches
       for script in $out/bin/*; do
         sed -i "s|\blsmod\b|${kmod}/bin/lsmod|g" "$script"
         sed -i "s|\bmodprobe\b|${kmod}/bin/modprobe|g" "$script"
+        sed -i "s|\bi2cdetect\b|${i2c-tools}/bin/i2cdetect|g" "$script"
       done
 
       chmod +x $out/bin/*
