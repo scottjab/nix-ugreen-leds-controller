@@ -142,6 +142,17 @@ let
         sed -i "s|\bzpool\b|${zfs}/bin/zpool|g" "$script"
       done
 
+      # Fix egrep pattern quoting issue in ugreen-diskiomon
+      # The original has unquoted pattern: egrep ^\\s*\\(sd\|dm\\)
+      # This causes shell errors, replace with properly quoted grep -E
+      if [ -f "$out/bin/ugreen-diskiomon" ]; then
+        # Replace the problematic egrep pattern
+        # The literal text in file is: egrep ^\\s*\\(sd\|dm\\)
+        # Replace with: grep -E '^\s*(sd|dm)'
+        # Match literal backslashes: \\ becomes \\\\ in sed
+        ${gnused}/bin/sed -i "s|egrep \^\\\\\\\\s\*\\\\\\\\\\(sd\\\\\\\\|dm\\\\\\\\\\)|grep -E '^\\\s*(sd|dm)'|g" "$out/bin/ugreen-diskiomon"
+      fi
+
       chmod +x $out/bin/*
     '';
   };
