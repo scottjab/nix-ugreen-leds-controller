@@ -4,6 +4,7 @@
   fetchFromGitHub,
   gcc,
   kernel,
+  kmod,
 }:
 
 let
@@ -106,9 +107,19 @@ let
 
     sourceRoot = "source/scripts";
 
+    nativeBuildInputs = [ kmod ];
+
     installPhase = ''
       mkdir -p $out/bin
       cp ugreen-diskiomon ugreen-netdevmon ugreen-probe-leds $out/bin/
+
+      # Patch scripts to use absolute paths to kmod utilities
+      # Use sed to replace commands with word boundaries to avoid false matches
+      for script in $out/bin/*; do
+        sed -i "s|\blsmod\b|${kmod}/bin/lsmod|g" "$script"
+        sed -i "s|\bmodprobe\b|${kmod}/bin/modprobe|g" "$script"
+      done
+
       chmod +x $out/bin/*
     '';
   };
@@ -117,6 +128,8 @@ in
 stdenv.mkDerivation {
   pname = "ugreen-leds-controller";
   inherit version src;
+
+  nativeBuildInputs = [ kmod ];
 
   dontBuild = true;
 
