@@ -121,7 +121,10 @@ let
 
     installPhase = ''
       mkdir -p $out/bin
-      cp ugreen-diskiomon ugreen-netdevmon ugreen-probe-leds $out/bin/
+      
+      # Use our fixed ugreen-diskiomon script instead of upstream
+      cp ${./ugreen-diskiomon-fixed.sh} $out/bin/ugreen-diskiomon
+      cp ugreen-netdevmon ugreen-probe-leds $out/bin/
 
       # Patch scripts to use absolute paths to all required utilities
       # Use perl for all replacements to avoid sed quoting issues
@@ -139,19 +142,14 @@ let
         ${perl}/bin/perl -i -pe "s|\bawk\b|${gawk}/bin/awk|g" "$script"
         ${perl}/bin/perl -i -pe "s|\bsed\b|${gnused}/bin/sed|g" "$script"
         ${perl}/bin/perl -i -pe "s|\blsblk\b|${util-linux}/bin/lsblk|g" "$script"
+        # Patch smartctl - handle absolute path first to avoid double paths
+        ${perl}/bin/perl -i -pe "s|/usr/sbin/smartctl|${smartmontools}/bin/smartctl|g" "$script"
+        # Then patch bare smartctl command
         ${perl}/bin/perl -i -pe "s|\bsmartctl\b|${smartmontools}/bin/smartctl|g" "$script"
         ${perl}/bin/perl -i -pe "s|\bzpool\b|${zfs}/bin/zpool|g" "$script"
+        # Patch xargs (used in fixed script)
+        ${perl}/bin/perl -i -pe "s|\bxargs\b|${gnused}/bin/xargs|g" "$script"
       done
-
-      # Fix egrep pattern quoting issue in ugreen-diskiomon
-      # The original has unquoted pattern: egrep ^\\s*\\(sd\|dm\\)
-      # This causes shell errors, replace with properly quoted grep -E
-      if [ -f "$out/bin/ugreen-diskiomon" ]; then
-        # Replace the problematic egrep pattern using perl
-        # The literal text in file is: egrep ^\\s*\\(sd\|dm\\)
-        # Replace with: grep -E '^\s*(sd|dm)'
-        ${perl}/bin/perl -i -pe "s/egrep \^\\\\\\\\s\*\\\\\\\\\\(sd\\\\\\\\|dm\\\\\\\\\\)/grep -E '^\\\s*(sd|dm)'/g" "$out/bin/ugreen-diskiomon"
-      fi
 
       chmod +x $out/bin/*
     '';
@@ -161,8 +159,6 @@ in
 stdenv.mkDerivation {
   pname = "ugreen-leds-controller";
   inherit version src;
-
-  nativeBuildInputs = [ kmod ];
 
   dontBuild = true;
 
