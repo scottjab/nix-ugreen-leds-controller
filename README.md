@@ -10,7 +10,7 @@ Add to your `flake.nix`:
 
 ```nix
 {
-  inputs.ugreen-leds.url = "github:your-username/nix-ugreen-leds-controller";
+  inputs.ugreen-leds.url = "github:scottjab/nix-ugreen-leds-controller";
   
   outputs = { nixpkgs, ugreen-leds, ... }: {
     nixosConfigurations.your-host = nixpkgs.lib.nixosSystem {
