@@ -80,7 +80,7 @@ in
     environment.systemPackages = [
       package
       pkgs.smartmontools  # For smartctl command used by ugreen-diskiomon
-      pkgs.iproute        # For ping and ip commands used by ugreen-netdevmon
+      pkgs.iproute2       # For ping and ip commands used by ugreen-netdevmon
       pkgs.bc             # For bc calculator used by ugreen-netdevmon
     ];
 
