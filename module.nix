@@ -80,69 +80,80 @@ in
     environment.systemPackages = [
       package
       pkgs.smartmontools  # For smartctl command used by ugreen-diskiomon
+      pkgs.iproute        # For ping and ip commands used by ugreen-netdevmon
+      pkgs.bc             # For bc calculator used by ugreen-netdevmon
     ];
 
-    systemd.services.ugreen-probe-leds = mkIf cfg.probeLeds.enable {
-      description = "UGREEN LED initial hardware probing service";
-      after = [ "systemd-modules-load.service" ];
-      requires = [ "systemd-modules-load.service" ];
-      serviceConfig = {
-        Type = "oneshot";
-        ExecStart = "${package}/bin/ugreen-probe-leds";
-        RemainAfterExit = true;
-        StandardOutput = "journal";
-      };
-      wantedBy = [ "multi-user.target" ];
-    };
+    systemd.services = mkMerge [
+      (mkIf cfg.probeLeds.enable {
+        ugreen-probe-leds = {
+          description = "UGREEN LED initial hardware probing service";
+          after = [ "systemd-modules-load.service" ];
+          requires = [ "systemd-modules-load.service" ];
+          serviceConfig = {
+            Type = "oneshot";
+            ExecStart = "${package}/bin/ugreen-probe-leds";
+            RemainAfterExit = true;
+            StandardOutput = "journal";
+          };
+          wantedBy = [ "multi-user.target" ];
+        };
+      })
 
-    # Note: ugreen-power-led script doesn't exist in v0.3
-    # systemd.services.ugreen-power-led = mkIf cfg.powerLed.enable {
-    #   description = "UGREEN LEDs daemon for configuring power LED";
-    #   after = [ "ugreen-probe-leds.service" ];
-    #   requires = [ "ugreen-probe-leds.service" ];
-    #   serviceConfig = {
-    #     Type = "oneshot";
-    #     ExecStart = "${package}/bin/ugreen-power-led";
-    #     RemainAfterExit = true;
-    #     StandardOutput = "journal";
-    #   };
-    #   wantedBy = [ "multi-user.target" ];
-    # };
+      # Note: ugreen-power-led script doesn't exist in v0.3
+      # (mkIf cfg.powerLed.enable {
+      #   ugreen-power-led = {
+      #     description = "UGREEN LEDs daemon for configuring power LED";
+      #     after = [ "ugreen-probe-leds.service" ];
+      #     requires = [ "ugreen-probe-leds.service" ];
+      #     serviceConfig = {
+      #       Type = "oneshot";
+      #       ExecStart = "${package}/bin/ugreen-power-led";
+      #       RemainAfterExit = true;
+      #       StandardOutput = "journal";
+      #     };
+      #     wantedBy = [ "multi-user.target" ];
+      #   };
+      # })
 
-    systemd.services.ugreen-diskiomon = mkIf cfg.diskMonitor.enable {
-      description = "UGREEN LEDs daemon for monitoring diskio and blinking corresponding LEDs";
-      after = [ "ugreen-probe-leds.service" ];
-      requires = [ "ugreen-probe-leds.service" ];
-      serviceConfig = {
-        ExecStart = "${package}/bin/ugreen-diskiomon";
-        StandardOutput = "journal";
-        Restart = "on-failure";
-        RestartSec = "5s";
-      };
-      wantedBy = [ "multi-user.target" ];
-      restartTriggers = [ package ];
-      environment = mkIf (cfg.diskMonitor.configFile != null) {
-        UGREEN_LEDS_CONF = toString cfg.diskMonitor.configFile;
-      };
-    };
-
-    systemd.services.ugreen-netdevmon = mkMerge (
-      map (interface: {
-        "ugreen-netdevmon@${interface}" = {
-          description = "UGREEN LEDs daemon for monitoring netio (of ${interface}) and blinking corresponding LEDs";
+      (mkIf cfg.diskMonitor.enable {
+        ugreen-diskiomon = {
+          description = "UGREEN LEDs daemon for monitoring diskio and blinking corresponding LEDs";
           after = [ "ugreen-probe-leds.service" ];
           requires = [ "ugreen-probe-leds.service" ];
           serviceConfig = {
-            ExecStart = "${package}/bin/ugreen-netdevmon %i";
+            ExecStart = "${package}/bin/ugreen-diskiomon";
             StandardOutput = "journal";
             Restart = "on-failure";
             RestartSec = "5s";
           };
           wantedBy = [ "multi-user.target" ];
           restartTriggers = [ package ];
+          environment = mkIf (cfg.diskMonitor.configFile != null) {
+            UGREEN_LEDS_CONF = toString cfg.diskMonitor.configFile;
+          };
         };
-      }) cfg.networkMonitor.interfaces
-    );
+      })
+
+      (mkIf cfg.networkMonitor.enable (
+        listToAttrs (map (interface: {
+          name = "ugreen-netdevmon@${interface}";
+          value = {
+            description = "UGREEN LEDs daemon for monitoring netio (of ${interface}) and blinking corresponding LEDs";
+            after = [ "ugreen-probe-leds.service" ];
+            requires = [ "ugreen-probe-leds.service" ];
+            serviceConfig = {
+              ExecStart = "${package}/bin/ugreen-netdevmon %i";
+              StandardOutput = "journal";
+              Restart = "on-failure";
+              RestartSec = "5s";
+            };
+            wantedBy = [ "multi-user.target" ];
+            restartTriggers = [ package ];
+          };
+        }) cfg.networkMonitor.interfaces)
+      ))
+    ];
 
     environment.etc."ugreen-leds.conf" = {
       source = "${package}/share/ugreen-leds-controller/ugreen-leds.conf";
