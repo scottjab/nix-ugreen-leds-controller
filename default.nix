@@ -124,23 +124,23 @@ let
       cp ugreen-diskiomon ugreen-netdevmon ugreen-probe-leds $out/bin/
 
       # Patch scripts to use absolute paths to all required utilities
-      # Use sed to replace commands with word boundaries to avoid false matches
+      # Use perl for all replacements to avoid sed quoting issues
       for script in $out/bin/*; do
         # Kernel module utilities
-        sed -i "s|\blsmod\b|${kmod}/bin/lsmod|g" "$script"
-        sed -i "s|\bmodprobe\b|${kmod}/bin/modprobe|g" "$script"
+        ${perl}/bin/perl -i -pe "s|\blsmod\b|${kmod}/bin/lsmod|g" "$script"
+        ${perl}/bin/perl -i -pe "s|\bmodprobe\b|${kmod}/bin/modprobe|g" "$script"
         
         # I2C utilities
-        sed -i "s|\bi2cdetect\b|${i2c-tools}/bin/i2cdetect|g" "$script"
+        ${perl}/bin/perl -i -pe "s|\bi2cdetect\b|${i2c-tools}/bin/i2cdetect|g" "$script"
         
         # System utilities
-        sed -i "s|\bwhich\b|${which}/bin/which|g" "$script"
-        sed -i "s|\bdmidecode\b|${dmidecode}/bin/dmidecode|g" "$script"
-        sed -i "s|\bawk\b|${gawk}/bin/awk|g" "$script"
-        sed -i "s|\bsed\b|${gnused}/bin/sed|g" "$script"
-        sed -i "s|\blsblk\b|${util-linux}/bin/lsblk|g" "$script"
-        sed -i "s|\bsmartctl\b|${smartmontools}/bin/smartctl|g" "$script"
-        sed -i "s|\bzpool\b|${zfs}/bin/zpool|g" "$script"
+        ${perl}/bin/perl -i -pe "s|\bwhich\b|${which}/bin/which|g" "$script"
+        ${perl}/bin/perl -i -pe "s|\bdmidecode\b|${dmidecode}/bin/dmidecode|g" "$script"
+        ${perl}/bin/perl -i -pe "s|\bawk\b|${gawk}/bin/awk|g" "$script"
+        ${perl}/bin/perl -i -pe "s|\bsed\b|${gnused}/bin/sed|g" "$script"
+        ${perl}/bin/perl -i -pe "s|\blsblk\b|${util-linux}/bin/lsblk|g" "$script"
+        ${perl}/bin/perl -i -pe "s|\bsmartctl\b|${smartmontools}/bin/smartctl|g" "$script"
+        ${perl}/bin/perl -i -pe "s|\bzpool\b|${zfs}/bin/zpool|g" "$script"
       done
 
       # Fix egrep pattern quoting issue in ugreen-diskiomon
