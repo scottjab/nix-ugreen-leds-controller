@@ -14,7 +14,7 @@
   util-linux,
   smartmontools,
   zfs,
-  iproute,
+  iproute2,
   bc,
 }:
 
@@ -119,7 +119,7 @@ let
 
     sourceRoot = "source/scripts";
 
-    nativeBuildInputs = [ kmod i2c-tools which dmidecode gawk gnused perl util-linux smartmontools zfs iproute bc ];
+    nativeBuildInputs = [ kmod i2c-tools which dmidecode gawk gnused perl util-linux smartmontools zfs iproute2 bc ];
 
     installPhase = ''
       mkdir -p $out/bin
@@ -152,8 +152,8 @@ let
         # Patch xargs (used in fixed script)
         ${perl}/bin/perl -i -pe "s|\bxargs\b|${gnused}/bin/xargs|g" "$script"
         # Network utilities (for ugreen-netdevmon)
-        ${perl}/bin/perl -i -pe "s|\bping\b|${iproute}/bin/ping|g" "$script"
-        ${perl}/bin/perl -i -pe "s|\bip\b|${iproute}/bin/ip|g" "$script"
+        ${perl}/bin/perl -i -pe "s|\bping\b|${iproute2}/bin/ping|g" "$script"
+        ${perl}/bin/perl -i -pe "s|\bip\b|${iproute2}/bin/ip|g" "$script"
         # Calculator (for ugreen-netdevmon)
         ${perl}/bin/perl -i -pe "s|\bbc\b|${bc}/bin/bc|g" "$script"
       done
