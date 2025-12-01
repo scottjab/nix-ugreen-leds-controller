@@ -20,8 +20,7 @@ let
 
   cfg = config.services.ugreen-leds;
   package = cfg.package;
-in
-{
+
   # Helper function to format RGB color as string
   formatColor = color: "${toString color.r} ${toString color.g} ${toString color.b}";
 
@@ -42,7 +41,8 @@ in
       };
     };
   };
-
+in
+{
   options.services.ugreen-leds = {
     enable = mkEnableOption "UGREEN LEDs controller";
 
