@@ -10,13 +10,14 @@ with lib;
 
 let
   # Import the package directly if not available in pkgs
-  defaultPackage = 
-    if pkgs ? ugreen-leds-controller
-    then pkgs.ugreen-leds-controller
-    else pkgs.callPackage (import packagePath) {
-      kernel = pkgs.linuxPackages.kernel;
-    };
-  
+  defaultPackage =
+    if pkgs ? ugreen-leds-controller then
+      pkgs.ugreen-leds-controller
+    else
+      pkgs.callPackage (import packagePath) {
+        kernel = pkgs.linuxPackages.kernel;
+      };
+
   cfg = config.services.ugreen-leds;
   package = cfg.package;
 in
