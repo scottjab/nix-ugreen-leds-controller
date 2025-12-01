@@ -1,3 +1,4 @@
+packagePath:
 {
   config,
   lib,
@@ -8,6 +9,14 @@
 with lib;
 
 let
+  # Import the package directly if not available in pkgs
+  defaultPackage = 
+    if pkgs ? ugreen-leds-controller
+    then pkgs.ugreen-leds-controller
+    else pkgs.callPackage (import packagePath) {
+      kernel = pkgs.linuxPackages.kernel;
+    };
+  
   cfg = config.services.ugreen-leds;
   package = cfg.package;
 in
@@ -17,8 +26,8 @@ in
 
     package = mkOption {
       type = types.package;
-      default = pkgs.ugreen-leds-controller;
-      defaultText = "pkgs.ugreen-leds-controller";
+      default = defaultPackage;
+      defaultText = "pkgs.ugreen-leds-controller or built from source";
       description = "The ugreen-leds-controller package to use.";
     };
 

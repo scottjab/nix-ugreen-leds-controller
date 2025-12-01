@@ -31,8 +31,8 @@
     )
     // {
       nixosModules = {
-        default = import ./module.nix;
-        ugreen-leds = import ./module.nix;
+        default = import ./module.nix ./default.nix;
+        ugreen-leds = import ./module.nix ./default.nix;
       };
 
       overlays.default = final: prev: {
