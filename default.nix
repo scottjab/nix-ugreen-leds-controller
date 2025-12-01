@@ -6,6 +6,13 @@
   kernel,
   kmod,
   i2c-tools,
+  which,
+  dmidecode,
+  gawk,
+  gnused,
+  util-linux,
+  smartmontools,
+  zfs,
 }:
 
 let
@@ -109,18 +116,30 @@ let
 
     sourceRoot = "source/scripts";
 
-    nativeBuildInputs = [ kmod i2c-tools ];
+    nativeBuildInputs = [ kmod i2c-tools which dmidecode gawk gnused util-linux smartmontools zfs ];
 
     installPhase = ''
       mkdir -p $out/bin
       cp ugreen-diskiomon ugreen-netdevmon ugreen-probe-leds $out/bin/
 
-      # Patch scripts to use absolute paths to kmod and i2c-tools utilities
+      # Patch scripts to use absolute paths to all required utilities
       # Use sed to replace commands with word boundaries to avoid false matches
       for script in $out/bin/*; do
+        # Kernel module utilities
         sed -i "s|\blsmod\b|${kmod}/bin/lsmod|g" "$script"
         sed -i "s|\bmodprobe\b|${kmod}/bin/modprobe|g" "$script"
+        
+        # I2C utilities
         sed -i "s|\bi2cdetect\b|${i2c-tools}/bin/i2cdetect|g" "$script"
+        
+        # System utilities
+        sed -i "s|\bwhich\b|${which}/bin/which|g" "$script"
+        sed -i "s|\bdmidecode\b|${dmidecode}/bin/dmidecode|g" "$script"
+        sed -i "s|\bawk\b|${gawk}/bin/awk|g" "$script"
+        sed -i "s|\bsed\b|${gnused}/bin/sed|g" "$script"
+        sed -i "s|\blsblk\b|${util-linux}/bin/lsblk|g" "$script"
+        sed -i "s|\bsmartctl\b|${smartmontools}/bin/smartctl|g" "$script"
+        sed -i "s|\bzpool\b|${zfs}/bin/zpool|g" "$script"
       done
 
       chmod +x $out/bin/*
