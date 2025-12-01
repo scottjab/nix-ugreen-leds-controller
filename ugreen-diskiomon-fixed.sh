@@ -277,7 +277,7 @@ if [ "$CHECK_SMART" = true ]; then
             dev=${devices[$led]}
 
             # read the smart status return code, but ignore if the drive is on standby
-            /usr/sbin/smartctl -H /dev/${dev} -n standby,0 &> /dev/null
+            smartctl -H /dev/${dev} -n standby,0 &> /dev/null
             RET=$?
 
             # check return code for critical errors (any bit set except bit 5)
