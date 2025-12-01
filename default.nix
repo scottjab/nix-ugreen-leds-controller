@@ -10,6 +10,7 @@
   dmidecode,
   gawk,
   gnused,
+  perl,
   util-linux,
   smartmontools,
   zfs,
@@ -116,7 +117,7 @@ let
 
     sourceRoot = "source/scripts";
 
-    nativeBuildInputs = [ kmod i2c-tools which dmidecode gawk gnused util-linux smartmontools zfs ];
+    nativeBuildInputs = [ kmod i2c-tools which dmidecode gawk gnused perl util-linux smartmontools zfs ];
 
     installPhase = ''
       mkdir -p $out/bin
@@ -146,11 +147,10 @@ let
       # The original has unquoted pattern: egrep ^\\s*\\(sd\|dm\\)
       # This causes shell errors, replace with properly quoted grep -E
       if [ -f "$out/bin/ugreen-diskiomon" ]; then
-        # Replace the problematic egrep pattern
+        # Replace the problematic egrep pattern using perl
         # The literal text in file is: egrep ^\\s*\\(sd\|dm\\)
         # Replace with: grep -E '^\s*(sd|dm)'
-        # Match literal backslashes: \\ becomes \\\\ in sed
-        ${gnused}/bin/sed -i "s|egrep \^\\\\\\\\s\*\\\\\\\\\\(sd\\\\\\\\|dm\\\\\\\\\\)|grep -E '^\\\s*(sd|dm)'|g" "$out/bin/ugreen-diskiomon"
+        ${perl}/bin/perl -i -pe "s/egrep \^\\\\\\\\s\*\\\\\\\\\\(sd\\\\\\\\|dm\\\\\\\\\\)/grep -E '^\\\s*(sd|dm)'/g" "$out/bin/ugreen-diskiomon"
       fi
 
       chmod +x $out/bin/*
