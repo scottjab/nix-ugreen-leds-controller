@@ -246,7 +246,7 @@ if [ "$CHECK_ZPOOL" = true ]; then
                             fi
 
                             echo "$COLOR_ZPOOL_FAIL" > /sys/class/leds/$led/color
-                            echo "Disk failure detected on /dev/$zpool_dev_name (state: ${zpool_dev_state}) at $(date +%Y-%m-%d' '%H:%M:%S)"
+                            echo "ZPOOL Disk failure detected on /dev/$zpool_dev_name (state: ${zpool_dev_state}) at $(date +%Y-%m-%d' '%H:%M:%S)"
                         fi
                         ;;
                     ONLINE|AVAIL|DEGRADED|*)
@@ -284,7 +284,7 @@ if [ "$CHECK_SMART" = true ]; then
             # possible return bits set: https://invent.kde.org/system/kpmcore/-/merge_requests/28
             if (( $RET & ~32 )); then
                 echo "$COLOR_SMART_FAIL" > /sys/class/leds/$led/color
-                echo Disk failure detected on /dev/$dev at $(date +%Y-%m-%d' '%H:%M:%S)
+                echo SMART Disk failure detected on /dev/$dev at $(date +%Y-%m-%d' '%H:%M:%S)
                 continue
             fi
         done
