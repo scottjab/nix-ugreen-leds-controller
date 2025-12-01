@@ -9,14 +9,14 @@ packagePath:
 with lib;
 
 let
-  # Import the package directly if not available in pkgs
-  defaultPackage =
-    if pkgs ? ugreen-leds-controller then
-      pkgs.ugreen-leds-controller
-    else
-      pkgs.callPackage (import packagePath) {
-        kernel = pkgs.linuxPackages.kernel;
-      };
+  # Use the system's kernel packages, not the default pkgs kernel
+  kernelPackages = config.boot.kernelPackages;
+  
+  # Always build the package with the system's kernel to ensure kernel module matches
+  # Even if package is in pkgs, we rebuild it to ensure kernel module compatibility
+  defaultPackage = pkgs.callPackage (import packagePath) {
+    kernel = kernelPackages.kernel;
+  };
 
   cfg = config.services.ugreen-leds;
   package = cfg.package;
