@@ -11,7 +11,7 @@ with lib;
 let
   # Use the system's kernel packages, not the default pkgs kernel
   kernelPackages = config.boot.kernelPackages;
-
+  
   # Always build the package with the system's kernel to ensure kernel module matches
   # Even if package is in pkgs, we rebuild it to ensure kernel module compatibility
   defaultPackage = pkgs.callPackage (import packagePath) {
@@ -113,8 +113,11 @@ in
       serviceConfig = {
         ExecStart = "${package}/bin/ugreen-diskiomon";
         StandardOutput = "journal";
+        Restart = "on-failure";
+        RestartSec = "5s";
       };
       wantedBy = [ "multi-user.target" ];
+      restartTriggers = [ package ];
       environment = mkIf (cfg.diskMonitor.configFile != null) {
         UGREEN_LEDS_CONF = toString cfg.diskMonitor.configFile;
       };
@@ -129,8 +132,11 @@ in
           serviceConfig = {
             ExecStart = "${package}/bin/ugreen-netdevmon %i";
             StandardOutput = "journal";
+            Restart = "on-failure";
+            RestartSec = "5s";
           };
           wantedBy = [ "multi-user.target" ];
+          restartTriggers = [ package ];
         };
       }) cfg.networkMonitor.interfaces
     );
