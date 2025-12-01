@@ -124,9 +124,10 @@ let
     installPhase = ''
       mkdir -p $out/bin
       
-      # Use our fixed ugreen-diskiomon script instead of upstream
+      # Use our fixed scripts instead of upstream
       cp ${./ugreen-diskiomon-fixed.sh} $out/bin/ugreen-diskiomon
-      cp ugreen-netdevmon ugreen-probe-leds $out/bin/
+      cp ${./ugreen-netdevmon-fixed.sh} $out/bin/ugreen-netdevmon
+      cp ugreen-probe-leds $out/bin/
 
       # Patch scripts to use absolute paths to all required utilities
       # Use perl for all replacements to avoid sed quoting issues
