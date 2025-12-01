@@ -77,7 +77,10 @@ in
       package.kernelModule
     ];
 
-    environment.systemPackages = [ package ];
+    environment.systemPackages = [
+      package
+      pkgs.smartmontools  # For smartctl command used by ugreen-diskiomon
+    ];
 
     systemd.services.ugreen-probe-leds = mkIf cfg.probeLeds.enable {
       description = "UGREEN LED initial hardware probing service";
