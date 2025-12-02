@@ -95,7 +95,7 @@ in
 
       checkZpool = mkOption {
         type = types.bool;
-        default = false;
+        default = true;
         description = "Check ZFS pool health";
       };
 
