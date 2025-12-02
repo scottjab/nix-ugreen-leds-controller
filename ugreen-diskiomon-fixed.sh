@@ -243,12 +243,20 @@ if [ "$CHECK_ZPOOL" = true ]; then
                 zpool_dev_lookup=${zpool_dev_name}
                 zpool_dev_base=$(echo $zpool_dev_name | sed 's/[0-9]*$//')
 
-                # Try lookup with full device name first, then base name
+                # Try lookup with full device name first, then base name in zpool_ledmap
                 led=""
                 if [[ -v "zpool_ledmap[${zpool_dev_lookup}]" ]]; then
                     led=${zpool_ledmap[$zpool_dev_lookup]}
                 elif [[ -v "zpool_ledmap[${zpool_dev_base}]" ]]; then
                     led=${zpool_ledmap[$zpool_dev_base]}
+                fi
+
+                # Fallback: if not found in zpool_ledmap, try direct lookup in dev_to_led_map
+                # This handles cases where the device wasn't mapped during initialization
+                if [[ -z "$led" ]]; then
+                    if [[ -v "dev_to_led_map[${zpool_dev_base}]" ]]; then
+                        led=${dev_to_led_map[$zpool_dev_base]}
+                    fi
                 fi
 
                 if [[ -n "$led" ]]; then
@@ -259,7 +267,7 @@ if [ "$CHECK_ZPOOL" = true ]; then
                         OFFLINE|FAULTED|UNAVAIL|REMOVED|CORRUPT)
                             # This is a real failure - always set LED to red, overriding any other state
                             echo "$COLOR_ZPOOL_FAIL" > /sys/class/leds/$led/color
-                            echo "ZPOOL Disk failure detected on /dev/$zpool_dev_name (state: ${zpool_dev_state}) at $(date +%Y-%m-%d' '%H:%M:%S)"
+                            echo "ZPOOL Disk failure detected on /dev/$zpool_dev_name (state: ${zpool_dev_state}) -> LED: $led at $(date +%Y-%m-%d' '%H:%M:%S)"
                             ;;
                         ONLINE|AVAIL|DEGRADED|*)
                             # Device is healthy in zpool - reset LED to healthy if it was previously marked as zpool failure
@@ -268,6 +276,13 @@ if [ "$CHECK_ZPOOL" = true ]; then
                                 echo "$COLOR_DISK_HEALTH" > /sys/class/leds/$led/color
                                 echo "ZPOOL Disk /dev/$zpool_dev_name recovered (state: ${zpool_dev_state}) at $(date +%Y-%m-%d' '%H:%M:%S)"
                             fi
+                            ;;
+                    esac
+                else
+                    # Debug: log when we can't find LED mapping for a faulted device
+                    case "${zpool_dev_state}" in
+                        OFFLINE|FAULTED|UNAVAIL|REMOVED|CORRUPT)
+                            echo "WARNING: ZPOOL device /dev/$zpool_dev_name (state: ${zpool_dev_state}) not found in LED mapping (looked for: ${zpool_dev_lookup}, ${zpool_dev_base})" >&2
                             ;;
                     esac
                 fi
