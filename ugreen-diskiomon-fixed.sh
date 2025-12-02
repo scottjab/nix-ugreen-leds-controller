@@ -232,10 +232,8 @@ if [ "$CHECK_ZPOOL" = true ]; then
                 # Format: "        sda     ONLINE       0     0     0"
                 # We need to extract device name and state, handling variable whitespace
                 zpool_dev_name=$(echo "$line" | awk '{print $1}')
-                zpool_dev_state=$(echo "$line" | awk '{print $2}')
-                
-                # Trim whitespace from state
-                zpool_dev_state=$(echo "$zpool_dev_state" | xargs)
+                # Extract and trim whitespace from state using awk (no external dependencies)
+                zpool_dev_state=$(echo "$line" | awk '{gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2}')
 
                 # Normalize device name to match the mapping key (which uses full name with partition)
                 # The mapping was created with the full device name from zpool status, so we use it as-is
