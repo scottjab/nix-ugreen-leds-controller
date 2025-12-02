@@ -1,9 +1,14 @@
 #!/usr/bin/bash
 
+LOCKFILE="/var/run/ugreen-diskiomon.lock"
+
 # function for removing lockfile
 exit-ugreen-diskiomon() {
-  if [[ -f "/var/run/ugreen-diskiomon.lock" ]]; then
-    rm "/var/run/ugreen-diskiomon.lock"
+  if [[ -f "$LOCKFILE" ]]; then
+    # Only remove lockfile if it contains our PID
+    if [[ -f "$LOCKFILE" ]] && [[ "$(cat "$LOCKFILE" 2>/dev/null)" == "$$" ]]; then
+      rm "$LOCKFILE"
+    fi
   fi
   kill $smart_check_pid 2>/dev/null
   kill $zpool_check_pid 2>/dev/null
@@ -11,15 +16,27 @@ exit-ugreen-diskiomon() {
   kill $standby_checker_pid 2>/dev/null
 }
 
-# trap exit and remove lockfile
+# trap exit and signals to ensure cleanup
 trap 'exit-ugreen-diskiomon' EXIT
+trap 'exit-ugreen-diskiomon' SIGTERM
+trap 'exit-ugreen-diskiomon' SIGINT
 
 # check if script is already running
-if [[ -f "/var/run/ugreen-diskiomon.lock" ]]; then
-  echo "ugreen-diskiomon already running!"
-  exit 1
+if [[ -f "$LOCKFILE" ]]; then
+  old_pid=$(cat "$LOCKFILE" 2>/dev/null)
+  # Check if the PID in the lockfile is still running
+  if [[ -n "$old_pid" ]] && kill -0 "$old_pid" 2>/dev/null; then
+    echo "ugreen-diskiomon already running! (PID: $old_pid)"
+    exit 1
+  else
+    # Stale lockfile - remove it
+    echo "Removing stale lockfile (old PID: $old_pid)"
+    rm -f "$LOCKFILE"
+  fi
 fi
-touch /var/run/ugreen-diskiomon.lock
+
+# Create lockfile with our PID
+echo "$$" > "$LOCKFILE"
 
 # use variables from config file (unRAID specific)
 if [[ -f /boot/config/plugins/ugreenleds-driver/settings.cfg ]]; then
@@ -227,6 +244,8 @@ if [ "$CHECK_ZPOOL" = true ]; then
     done <<< "$(zpool status -L | grep -E '^\s*(sd|dm)')"
 
     function zpool_check_loop() {
+        # Track which devices have already been logged as faulted
+        declare -A zpool_faulted_logged
         while true; do
             while read line
             do
@@ -267,10 +286,14 @@ if [ "$CHECK_ZPOOL" = true ]; then
                         OFFLINE|FAULTED|UNAVAIL|REMOVED|CORRUPT)
                             # This is a real failure - always set LED to red, overriding any other state
                             echo "$COLOR_ZPOOL_FAIL" > /sys/class/leds/$led/color
-                            if [ "$DEBUG_ZPOOL" = true ]; then
-                                echo "ZPOOL Disk failure detected on /dev/$zpool_dev_name (state: ${zpool_dev_state}) -> LED: $led at $(date +%Y-%m-%d' '%H:%M:%S)"
-                            else
-                                echo "ZPOOL Disk failure detected on /dev/$zpool_dev_name (state: ${zpool_dev_state}) at $(date +%Y-%m-%d' '%H:%M:%S)"
+                            # Only log once per faulted device until it recovers
+                            if [[ -z "${zpool_faulted_logged[$zpool_dev_name]}" ]]; then
+                                if [ "$DEBUG_ZPOOL" = true ]; then
+                                    echo "ZPOOL Disk failure detected on /dev/$zpool_dev_name (state: ${zpool_dev_state}) -> LED: $led at $(date +%Y-%m-%d' '%H:%M:%S)"
+                                else
+                                    echo "ZPOOL Disk failure detected on /dev/$zpool_dev_name (state: ${zpool_dev_state}) at $(date +%Y-%m-%d' '%H:%M:%S)"
+                                fi
+                                zpool_faulted_logged[$zpool_dev_name]=1
                             fi
                             ;;
                         ONLINE|AVAIL|DEGRADED|*)
@@ -280,6 +303,8 @@ if [ "$CHECK_ZPOOL" = true ]; then
                                 echo "$COLOR_DISK_HEALTH" > /sys/class/leds/$led/color
                                 [ "$DEBUG_ZPOOL" = true ] && echo "ZPOOL Disk /dev/$zpool_dev_name recovered (state: ${zpool_dev_state}) at $(date +%Y-%m-%d' '%H:%M:%S)"
                             fi
+                            # Clear the logged flag so we'll log again if it faults in the future
+                            unset zpool_faulted_logged[$zpool_dev_name]
                             ;;
                     esac
                 else
