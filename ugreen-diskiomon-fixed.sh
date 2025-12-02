@@ -213,7 +213,13 @@ if [ "$CHECK_ZPOOL" = true ]; then
         # if the detected scsi device can be found in the mapping array 
         #echo zpool $zpool_dev_name ">>" $zpool_scsi_dev_name ">>" ${dev_to_led_map[${zpool_scsi_dev_name}]}
         if [[ -v "dev_to_led_map[${zpool_scsi_dev_name}]" ]]; then
+            # Store mapping with both full device name (with partition) and base name (without partition)
+            # This ensures we can find the LED regardless of how zpool status reports the device
             zpool_ledmap[$zpool_dev_name]=${dev_to_led_map[${zpool_scsi_dev_name}]}
+            # Also store with base name for devices that might be reported without partition number
+            if [[ "$zpool_dev_name" != "$zpool_scsi_dev_name" ]]; then
+                zpool_ledmap[$zpool_scsi_dev_name]=${dev_to_led_map[${zpool_scsi_dev_name}]}
+            fi
             echo "zpool device" $zpool_dev_name ">>" $zpool_scsi_dev_name ">> LED:"${zpool_ledmap[$zpool_dev_name]}
         fi
     done <<< "$(zpool status -L | grep -E '^\s*(sd|dm)')"
@@ -231,28 +237,40 @@ if [ "$CHECK_ZPOOL" = true ]; then
                 # Trim whitespace from state
                 zpool_dev_state=$(echo "$zpool_dev_state" | xargs)
 
-                # Only flag actual failure states, not just "not ONLINE"
-                # Valid states: ONLINE, AVAIL, DEGRADED (during operations)
-                # Failure states: OFFLINE, FAULTED, UNAVAIL, REMOVED, CORRUPT
-                case "${zpool_dev_state}" in
-                    OFFLINE|FAULTED|UNAVAIL|REMOVED|CORRUPT)
-                        # This is a real failure
-                        if [[ -v "zpool_ledmap[${zpool_dev_name}]" ]]; then
-                            led=${zpool_ledmap[$zpool_dev_name]}
-                            led_color=$(cat /sys/class/leds/$led/color)
+                # Normalize device name to match the mapping key (which uses full name with partition)
+                # The mapping was created with the full device name from zpool status, so we use it as-is
+                # But we also need to check with the base device name (without partition) as fallback
+                zpool_dev_lookup=${zpool_dev_name}
+                zpool_dev_base=$(echo $zpool_dev_name | sed 's/[0-9]*$//')
 
-                            if ! is_disk_healthy_or_standby "$led_color"; then
-                                continue;
-                            fi
+                # Try lookup with full device name first, then base name
+                led=""
+                if [[ -v "zpool_ledmap[${zpool_dev_lookup}]" ]]; then
+                    led=${zpool_ledmap[$zpool_dev_lookup]}
+                elif [[ -v "zpool_ledmap[${zpool_dev_base}]" ]]; then
+                    led=${zpool_ledmap[$zpool_dev_base]}
+                fi
 
+                if [[ -n "$led" ]]; then
+                    # Only flag actual failure states, not just "not ONLINE"
+                    # Valid states: ONLINE, AVAIL, DEGRADED (during operations)
+                    # Failure states: OFFLINE, FAULTED, UNAVAIL, REMOVED, CORRUPT
+                    case "${zpool_dev_state}" in
+                        OFFLINE|FAULTED|UNAVAIL|REMOVED|CORRUPT)
+                            # This is a real failure - always set LED to red, overriding any other state
                             echo "$COLOR_ZPOOL_FAIL" > /sys/class/leds/$led/color
                             echo "ZPOOL Disk failure detected on /dev/$zpool_dev_name (state: ${zpool_dev_state}) at $(date +%Y-%m-%d' '%H:%M:%S)"
-                        fi
-                        ;;
-                    ONLINE|AVAIL|DEGRADED|*)
-                        # These are valid/operational states, do nothing
-                        ;;
-                esac
+                            ;;
+                        ONLINE|AVAIL|DEGRADED|*)
+                            # Device is healthy in zpool - reset LED to healthy if it was previously marked as zpool failure
+                            led_color=$(cat /sys/class/leds/$led/color)
+                            if [[ "$led_color" == "$COLOR_ZPOOL_FAIL" ]]; then
+                                echo "$COLOR_DISK_HEALTH" > /sys/class/leds/$led/color
+                                echo "ZPOOL Disk /dev/$zpool_dev_name recovered (state: ${zpool_dev_state}) at $(date +%Y-%m-%d' '%H:%M:%S)"
+                            fi
+                            ;;
+                    esac
+                fi
             done <<< "$(zpool status -L | grep -E '^\s*(sd|dm)')"
 
             sleep ${CHECK_ZPOOL_INTERVAL}s
