@@ -119,11 +119,24 @@ let
 
     sourceRoot = "source/scripts";
 
-    nativeBuildInputs = [ kmod i2c-tools which dmidecode gawk gnused perl util-linux smartmontools zfs iproute2 bc ];
+    nativeBuildInputs = [
+      kmod
+      i2c-tools
+      which
+      dmidecode
+      gawk
+      gnused
+      perl
+      util-linux
+      smartmontools
+      zfs
+      iproute2
+      bc
+    ];
 
     installPhase = ''
       mkdir -p $out/bin
-      
+
       # Use our fixed scripts instead of upstream
       cp ${./ugreen-diskiomon-fixed.sh} $out/bin/ugreen-diskiomon
       cp ${./ugreen-netdevmon-fixed.sh} $out/bin/ugreen-netdevmon
