@@ -1,42 +1,17 @@
 #!/usr/bin/bash
 
-LOCKFILE="/var/run/ugreen-diskiomon.lock"
-
-# function for removing lockfile
+# function for cleaning up child processes
 exit-ugreen-diskiomon() {
-  if [[ -f "$LOCKFILE" ]]; then
-    # Only remove lockfile if it contains our PID
-    if [[ -f "$LOCKFILE" ]] && [[ "$(cat "$LOCKFILE" 2>/dev/null)" == "$$" ]]; then
-      rm "$LOCKFILE"
-    fi
-  fi
   kill $smart_check_pid 2>/dev/null
   kill $zpool_check_pid 2>/dev/null
   kill $disk_online_check_pid 2>/dev/null
   kill $standby_checker_pid 2>/dev/null
 }
 
-# trap exit and signals to ensure cleanup
+# trap exit and signals to ensure cleanup of child processes
 trap 'exit-ugreen-diskiomon' EXIT
 trap 'exit-ugreen-diskiomon' SIGTERM
 trap 'exit-ugreen-diskiomon' SIGINT
-
-# check if script is already running
-if [[ -f "$LOCKFILE" ]]; then
-  old_pid=$(cat "$LOCKFILE" 2>/dev/null)
-  # Check if the PID in the lockfile is still running
-  if [[ -n "$old_pid" ]] && kill -0 "$old_pid" 2>/dev/null; then
-    echo "ugreen-diskiomon already running! (PID: $old_pid)"
-    exit 1
-  else
-    # Stale lockfile - remove it
-    echo "Removing stale lockfile (old PID: $old_pid)"
-    rm -f "$LOCKFILE"
-  fi
-fi
-
-# Create lockfile with our PID
-echo "$$" > "$LOCKFILE"
 
 # use variables from config file (unRAID specific)
 if [[ -f /boot/config/plugins/ugreenleds-driver/settings.cfg ]]; then
