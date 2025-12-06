@@ -1,22 +1,5 @@
 #!/usr/bin/bash
 
-# function for removing lockfile
-exit-ugreen-netdevmon() {
-  if [[ -f "/var/run/ugreen-netdevmon.lock" ]]; then
-    rm "/var/run/ugreen-netdevmon.lock"
-  fi
-}
-
-# trap exit and remove lockfile
-trap 'exit-ugreen-netdevmon' EXIT
-
-# check if script is already running
-if [[ -f "/var/run/ugreen-netdevmon.lock" ]]; then
-  echo "ugreen-netdevmon already running!"
-  exit 1
-fi
-touch /var/run/ugreen-netdevmon.lock
-
 { lsmod | grep ledtrig_netdev > /dev/null; } || { modprobe -v ledtrig_netdev && sleep 2; }
 
 # load environment variables
