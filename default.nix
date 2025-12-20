@@ -157,10 +157,15 @@ let
       mkdir -p $out/bin
       cp ugreen-probe-leds $out/bin/
       chmod +x $out/bin/*
-      
+
       # Wrap the script to ensure lsmod, modprobe, and i2cdetect are available
       wrapProgram $out/bin/ugreen-probe-leds \
-        --prefix PATH : ${lib.makeBinPath [ kmod i2c-tools ]}
+        --prefix PATH : ${
+          lib.makeBinPath [
+            kmod
+            i2c-tools
+          ]
+        }
     '';
   };
 
