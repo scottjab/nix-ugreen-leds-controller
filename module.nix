@@ -455,7 +455,10 @@ in
         (mkIf (cfg.diskMonitor.enable || cfg.networkMonitor.enable) {
           ugreen-leds-service = {
             description = "UGREEN LEDs daemon for monitoring disks and network devices";
-            after = [ "ugreen-probe-leds.service" "network.target" ];
+            after = [
+              "ugreen-probe-leds.service"
+              "network.target"
+            ];
             wants = [ "ugreen-probe-leds.service" ];
             serviceConfig = {
               ExecStart = "${package}/bin/ugreen-leds-service -config /etc/ugreen-leds.conf";
@@ -465,13 +468,15 @@ in
               RestartSec = "5s";
               # Ensure the service has access to required tools
               Environment = [
-                "PATH=${lib.makeBinPath [
-                  pkgs.smartmontools
-                  pkgs.zfs
-                  pkgs.iproute2
-                  pkgs.util-linux
-                  pkgs.dmidecode
-                ]}:/usr/bin:/bin"
+                "PATH=${
+                  lib.makeBinPath [
+                    pkgs.smartmontools
+                    pkgs.zfs
+                    pkgs.iproute2
+                    pkgs.util-linux
+                    pkgs.dmidecode
+                  ]
+                }:/usr/bin:/bin"
               ];
             };
             wantedBy = [ "multi-user.target" ];
