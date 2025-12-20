@@ -359,6 +359,7 @@ in
       # Generate config file content
       configFileContent = ''
         # Disk Monitor Configuration
+        DISK_MONITOR_ENABLE=${if cfg.diskMonitor.enable then "true" else "false"}
         MAPPING_METHOD=${cfg.diskMonitor.mappingMethod}
         CHECK_SMART=${if cfg.diskMonitor.checkSmart then "true" else "false"}
         CHECK_SMART_INTERVAL=${toString cfg.diskMonitor.checkSmartInterval}
@@ -378,6 +379,7 @@ in
         BLINK_MON_PATH=${cfg.diskMonitor.blinkMonPath}
 
         # Network Monitor Configuration
+        NETWORK_INTERFACES="${lib.concatStringsSep " " cfg.networkMonitor.interfaces}"
         COLOR_NETDEV_NORMAL="${formatColor cfg.networkMonitor.colorNormal}"
         COLOR_NETDEV_GATEWAY_UNREACHABLE="${formatColor cfg.networkMonitor.colorGatewayUnreachable}"
         COLOR_NETDEV_LINK_PURPLE_DEFAULT="${formatColor cfg.networkMonitor.colorLinkPurpleDefault}"
@@ -429,9 +431,8 @@ in
 
       environment.systemPackages = [
         package
-        pkgs.smartmontools # For smartctl command used by ugreen-diskiomon
-        pkgs.iproute2 # For ping and ip commands used by ugreen-netdevmon
-        pkgs.bc # For bc calculator used by ugreen-netdevmon
+        pkgs.smartmontools # For smartctl command used by Go service
+        pkgs.iproute2 # For ping and ip commands used by Go service
       ];
 
       systemd.services = mkMerge [
@@ -450,32 +451,28 @@ in
           };
         })
 
-        # Note: ugreen-power-led script doesn't exist in v0.3
-        # (mkIf cfg.powerLed.enable {
-        #   ugreen-power-led = {
-        #     description = "UGREEN LEDs daemon for configuring power LED";
-        #     after = [ "ugreen-probe-leds.service" ];
-        #     requires = [ "ugreen-probe-leds.service" ];
-        #     serviceConfig = {
-        #       Type = "oneshot";
-        #       ExecStart = "${package}/bin/ugreen-power-led";
-        #       RemainAfterExit = true;
-        #       StandardOutput = "journal";
-        #     };
-        #     wantedBy = [ "multi-user.target" ];
-        #   };
-        # })
-
-        (mkIf cfg.diskMonitor.enable {
-          ugreen-diskiomon = {
-            description = "UGREEN LEDs daemon for monitoring diskio and blinking corresponding LEDs";
-            after = [ "ugreen-probe-leds.service" ];
-            requires = [ "ugreen-probe-leds.service" ];
+        # Unified Go service for disk and network monitoring
+        (mkIf (cfg.diskMonitor.enable || cfg.networkMonitor.enable) {
+          ugreen-leds-service = {
+            description = "UGREEN LEDs daemon for monitoring disks and network devices";
+            after = [ "ugreen-probe-leds.service" "network.target" ];
+            wants = [ "ugreen-probe-leds.service" ];
             serviceConfig = {
-              ExecStart = "${package}/bin/ugreen-diskiomon";
+              ExecStart = "${package}/bin/ugreen-leds-service -config /etc/ugreen-leds.conf";
               StandardOutput = "journal";
+              StandardError = "journal";
               Restart = "on-failure";
               RestartSec = "5s";
+              # Ensure the service has access to required tools
+              Environment = [
+                "PATH=${lib.makeBinPath [
+                  pkgs.smartmontools
+                  pkgs.zfs
+                  pkgs.iproute2
+                  pkgs.util-linux
+                  pkgs.dmidecode
+                ]}:/usr/bin:/bin"
+              ];
             };
             wantedBy = [ "multi-user.target" ];
             restartTriggers = [
@@ -484,30 +481,6 @@ in
             ];
           };
         })
-
-        (mkIf cfg.networkMonitor.enable (
-          listToAttrs (
-            map (interface: {
-              name = "ugreen-netdevmon@${interface}";
-              value = {
-                description = "UGREEN LEDs daemon for monitoring netio (of ${interface}) and blinking corresponding LEDs";
-                after = [ "ugreen-probe-leds.service" ];
-                requires = [ "ugreen-probe-leds.service" ];
-                serviceConfig = {
-                  ExecStart = "${package}/bin/ugreen-netdevmon %i";
-                  StandardOutput = "journal";
-                  Restart = "on-failure";
-                  RestartSec = "5s";
-                };
-                wantedBy = [ "multi-user.target" ];
-                restartTriggers = [
-                  package
-                  configFileContent
-                ];
-              };
-            }) cfg.networkMonitor.interfaces
-          )
-        ))
       ];
 
       environment.etc."ugreen-leds.conf" = {

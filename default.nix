@@ -2,20 +2,17 @@
   lib,
   stdenv,
   fetchFromGitHub,
+  buildGoModule,
   gcc,
   kernel,
   kmod,
   i2c-tools,
   which,
   dmidecode,
-  gawk,
-  gnused,
-  perl,
   util-linux,
   smartmontools,
   zfs,
   iproute2,
-  bc,
 }:
 
 let
@@ -112,9 +109,36 @@ let
     };
   };
 
-  # Shell scripts wrapper
-  scripts = stdenv.mkDerivation {
-    pname = "ugreen-leds-scripts";
+  # Build Go service
+  goService = buildGoModule {
+    pname = "ugreen-leds-service";
+    version = "0.4.0";
+    src = lib.cleanSource ./.;
+
+    # No dependencies to vendor
+    vendorHash = null;
+
+    subPackages = [ "cmd/ugreen-leds-service" ];
+
+    # Runtime dependencies
+    propagatedBuildInputs = [
+      smartmontools
+      zfs
+      iproute2
+      util-linux
+      dmidecode
+    ];
+
+    meta = {
+      description = "Go service for UGREEN LEDs monitoring";
+      license = lib.licenses.mit;
+      platforms = lib.platforms.linux;
+    };
+  };
+
+  # Build probe-leds script (still needed for hardware initialization)
+  probe-leds = stdenv.mkDerivation {
+    pname = "ugreen-probe-leds";
     inherit version src;
 
     sourceRoot = "source/scripts";
@@ -123,55 +147,11 @@ let
       kmod
       i2c-tools
       which
-      dmidecode
-      gawk
-      gnused
-      perl
-      util-linux
-      smartmontools
-      zfs
-      iproute2
-      bc
     ];
 
     installPhase = ''
       mkdir -p $out/bin
-
-      # Use our fixed scripts instead of upstream
-      cp ${./ugreen-diskiomon-fixed.sh} $out/bin/ugreen-diskiomon
-      cp ${./ugreen-netdevmon-fixed.sh} $out/bin/ugreen-netdevmon
       cp ugreen-probe-leds $out/bin/
-
-      # Patch scripts to use absolute paths to all required utilities
-      # Use perl for all replacements to avoid sed quoting issues
-      for script in $out/bin/*; do
-        # Kernel module utilities
-        ${perl}/bin/perl -i -pe "s|\blsmod\b|${kmod}/bin/lsmod|g" "$script"
-        ${perl}/bin/perl -i -pe "s|\bmodprobe\b|${kmod}/bin/modprobe|g" "$script"
-        
-        # I2C utilities
-        ${perl}/bin/perl -i -pe "s|\bi2cdetect\b|${i2c-tools}/bin/i2cdetect|g" "$script"
-        
-        # System utilities
-        ${perl}/bin/perl -i -pe "s|\bwhich\b|${which}/bin/which|g" "$script"
-        ${perl}/bin/perl -i -pe "s|\bdmidecode\b|${dmidecode}/bin/dmidecode|g" "$script"
-        ${perl}/bin/perl -i -pe "s|\bawk\b|${gawk}/bin/awk|g" "$script"
-        ${perl}/bin/perl -i -pe "s|\bsed\b|${gnused}/bin/sed|g" "$script"
-        ${perl}/bin/perl -i -pe "s|\blsblk\b|${util-linux}/bin/lsblk|g" "$script"
-        # Patch smartctl - handle absolute path first to avoid double paths
-        ${perl}/bin/perl -i -pe "s|/usr/sbin/smartctl|${smartmontools}/bin/smartctl|g" "$script"
-        # Then patch bare smartctl command
-        ${perl}/bin/perl -i -pe "s|\bsmartctl\b|${smartmontools}/bin/smartctl|g" "$script"
-        ${perl}/bin/perl -i -pe "s|\bzpool\b|${zfs}/bin/zpool|g" "$script"
-        # Patch xargs (used in fixed script)
-        ${perl}/bin/perl -i -pe "s|\bxargs\b|${gnused}/bin/xargs|g" "$script"
-        # Network utilities (for ugreen-netdevmon)
-        ${perl}/bin/perl -i -pe "s|\bping\b|${iproute2}/bin/ping|g" "$script"
-        ${perl}/bin/perl -i -pe "s|\bip\b|${iproute2}/bin/ip|g" "$script"
-        # Calculator (for ugreen-netdevmon)
-        ${perl}/bin/perl -i -pe "s|\bbc\b|${bc}/bin/bc|g" "$script"
-      done
-
       chmod +x $out/bin/*
     '';
   };
@@ -190,12 +170,15 @@ stdenv.mkDerivation {
     # Install CLI
     cp ${cli}/bin/ugreen_leds_cli $out/bin/
 
+    # Install Go service
+    cp ${goService}/bin/ugreen-leds-service $out/bin/
+
+    # Install probe-leds script
+    cp ${probe-leds}/bin/ugreen-probe-leds $out/bin/
+
     # Install optional utilities
     cp ${blink-disk}/bin/ugreen-blink-disk $out/bin/
     cp ${check-standby}/bin/ugreen-check-standby $out/bin/
-
-    # Install scripts
-    cp ${scripts}/bin/* $out/bin/
 
     # Install config file
     cp ${src}/scripts/ugreen-leds.conf $out/share/ugreen-leds-controller/
@@ -209,9 +192,10 @@ stdenv.mkDerivation {
     inherit
       cli
       kernelModule
+      goService
+      probe-leds
       blink-disk
       check-standby
-      scripts
       ;
   };
 
