@@ -2,6 +2,8 @@
 
 Nix package and NixOS module for the [UGREEN LEDs Controller](https://github.com/miskcoo/ugreen_leds_controller), which controls LED lights on UGREEN's DX/DXP NAS Series devices.
 
+This package includes a unified Go service that replaces the original shell scripts for improved performance and maintainability.
+
 ## Usage
 
 ### Flake
@@ -45,9 +47,9 @@ nix build .#ugreen-leds-controller
 
 ## Configuration
 
-Default config: `/etc/ugreen-leds.conf`. Custom path via `services.ugreen-leds.diskMonitor.configFile`.
+Configuration is managed through the NixOS module options and written to `/etc/ugreen-leds.conf`. The Go service reads this configuration file at startup.
 
-See the [original repository](https://github.com/miskcoo/ugreen_leds_controller) for details.
+See the [original repository](https://github.com/miskcoo/ugreen_leds_controller) for details on the underlying kernel module and hardware support.
 
 ## Requirements
 
