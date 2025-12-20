@@ -3,6 +3,7 @@
   stdenv,
   fetchFromGitHub,
   buildGoModule,
+  makeWrapper,
   gcc,
   kernel,
   kmod,
@@ -144,15 +145,22 @@ let
     sourceRoot = "source/scripts";
 
     nativeBuildInputs = [
+      makeWrapper
+    ];
+
+    buildInputs = [
       kmod
       i2c-tools
-      which
     ];
 
     installPhase = ''
       mkdir -p $out/bin
       cp ugreen-probe-leds $out/bin/
       chmod +x $out/bin/*
+      
+      # Wrap the script to ensure lsmod, modprobe, and i2cdetect are available
+      wrapProgram $out/bin/ugreen-probe-leds \
+        --prefix PATH : ${lib.makeBinPath [ kmod i2c-tools ]}
     '';
   };
 
