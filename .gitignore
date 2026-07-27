@@ -2,3 +2,9 @@ temp-repo/
 result
 result-*
 
+# crash dumps
+erl_crash.dump
+*.dump
+core
+core.*
+
