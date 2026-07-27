@@ -17,12 +17,14 @@
 }:
 
 let
-  version = "0.3";
+  # Upstream has no tag past v0.3 on master; v0.4-beta lives on the
+  # experimental dev-idx601-series branch. Pin master head instead.
+  version = "0.3-unstable-2026-07-08";
   src = fetchFromGitHub {
     owner = "miskcoo";
     repo = "ugreen_leds_controller";
-    rev = "v${version}";
-    sha256 = "sha256-eSTOUHs4y6n4cacpjQAp4JIfyu40aBJEMsvuCN6RFZc=";
+    rev = "1e881da8b3d8598abadb50e859e8433c365c2840";
+    sha256 = "sha256-7WRLqcruISsjdFaiIAZInhUI9lGncVA9v4/SHYIZ3HY=";
   };
 
   # Build the CLI tool
